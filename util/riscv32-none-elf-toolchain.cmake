@@ -76,19 +76,25 @@ set(RISCV_WARN_FLAGS "-Wno-error=incompatible-pointer-types -Wno-error=format=")
 #   to_stack etc.). Newlib's <dirent.h> errors out at #include time with
 #   "<dirent.h> not supported".
 #
-# BORINGSSL_UNSAFE_DETERMINISTIC_MODE
-#   Replace CRYPTO_sysrand with a fixed-seed counter. This is the only
-#   entropy backend that doesn't need an OS, but it produces PREDICTABLE
-#   randomness and MUST NOT be used in production. It exists to get the
-#   cross-compile / link pipeline green; for real use, drop this flag and
-#   provide your own CRYPTO_sysrand backed by a hardware TRNG or RTOS RNG.
+# OPENSSL_RAND_JITTER_ENABLE
+#   Route CRYPTO_sysrand to crypto/rand_extra/jitter_sysrand.c, which is
+#   backed by the bundled jitter-entropy library. The library's source
+#   files are NOT linked into libcrypto.a in this configuration (we keep
+#   DISABLE_CPU_JITTER_ENTROPY=ON to skip the heavier tree-DRBG path that
+#   wants per-thread storage we don't have). The final consumer (e.g. the
+#   FreeRTOS demo) must build libjitterentropy itself and link it in.
 set(RISCV_DEFINES
     "-DOPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED"
     "-DOPENSSL_NO_SOCK"
     "-DOPENSSL_NO_POSIX_IO"
     "-DOPENSSL_NO_TTY"
     "-DOPENSSL_NO_FILESYSTEM"
-    "-DBORINGSSL_UNSAFE_DETERMINISTIC_MODE")
+    "-DOPENSSL_RAND_JITTER_ENABLE"
+    # The bundled jitter-entropy headers need to know they're being built
+    # inside aws-lc (so OPENSSL_malloc/cleanse are used in inline helpers)
+    # and that the cycle-counter / no-yield baremetal branch should apply.
+    "-DAWSLC"
+    "-DJENT_RISCV_BAREMETAL")
 string(REPLACE ";" " " RISCV_DEFINES "${RISCV_DEFINES}")
 
 set(CMAKE_C_FLAGS_INIT   "${RISCV_ARCH_FLAGS} ${RISCV_WARN_FLAGS} ${RISCV_DEFINES} -ffunction-sections -fdata-sections")

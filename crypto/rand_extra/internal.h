@@ -8,6 +8,12 @@
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
+#elif defined(OPENSSL_RAND_JITTER_ENABLE)
+// Bare-metal / RTOS targets that have no OS-provided entropy source can opt
+// into a CRYPTO_sysrand backed by the jitter-entropy library. The caller
+// must arrange for the library's timer (e.g. RISC-V rdcycle) to be
+// accessible.
+#define OPENSSL_RAND_JITTER
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #elif defined(OPENSSL_MACOS) || defined(OPENSSL_OPENBSD) || \

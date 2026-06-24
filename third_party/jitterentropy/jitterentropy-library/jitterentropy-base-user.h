@@ -191,6 +191,35 @@ static inline void jent_get_nstime(uint64_t *out)
 	*out = *(uint64_t *)(clk + 1);
 }
 
+#elif defined(__riscv) && defined(JENT_RISCV_BAREMETAL)
+
+/*
+ * RISC-V bare-metal: read the 64-bit cycle counter via the `cycle` /
+ * `cycleh` CSRs. On RV32 the counter is split into two 32-bit halves; use
+ * the standard "read high, read low, read high again, retry on mismatch"
+ * idiom from the RISC-V unprivileged spec to avoid a torn read across the
+ * 32-bit boundary.
+ *
+ * `mcounteren.CY` (machine mode) and, if running in user/supervisor mode,
+ * `scounteren.CY` / `mcounteren.CY` must be set to enable rdcycle.
+ */
+static inline void jent_get_nstime(uint64_t *out)
+{
+#if __riscv_xlen == 64
+	uint64_t v;
+	__asm__ __volatile__("rdcycle %0" : "=r" (v));
+	*out = v;
+#else
+	uint32_t hi, lo, hi2;
+	do {
+		__asm__ __volatile__("rdcycleh %0" : "=r" (hi));
+		__asm__ __volatile__("rdcycle  %0" : "=r" (lo));
+		__asm__ __volatile__("rdcycleh %0" : "=r" (hi2));
+	} while (hi != hi2);
+	*out = ((uint64_t)hi << 32) | lo;
+#endif
+}
+
 #elif defined(__powerpc)
 /*
  * Uncomment this for newer PPC CPUs
@@ -498,7 +527,13 @@ static inline uint32_t jent_cache_size_roundup(void)
 
 static inline void jent_yield(void)
 {
+#ifdef JENT_RISCV_BAREMETAL
+	/* No scheduler to yield to; just a compiler barrier so the surrounding
+	 * memory accesses aren't reordered around this point. */
+	__asm__ __volatile__("" ::: "memory");
+#else
 	sched_yield();
+#endif
 }
 
 /* --- helpers needed in user space -- */

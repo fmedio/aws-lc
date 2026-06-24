@@ -458,6 +458,7 @@ add_library(
   rand_extra/ccrandomgeneratebytes.c
   rand_extra/deterministic.c
   rand_extra/getentropy.c
+  rand_extra/jitter_sysrand.c
   rand_extra/rand_extra.c
   rand_extra/vm_ube_fallback.c
   rand_extra/urandom.c
