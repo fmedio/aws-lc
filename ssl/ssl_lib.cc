@@ -35,7 +35,9 @@
 #if defined(OPENSSL_WINDOWS)
 #include <sys/timeb.h>
 #else
+#if !defined(OPENSSL_NO_SOCK)
 #include <sys/socket.h>
+#endif
 #include <sys/time.h>
 #endif
 
